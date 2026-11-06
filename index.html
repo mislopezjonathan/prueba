@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi lista de tareas</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: Arial, sans-serif; background: #f3f4f6; color: #1f2937; display: grid; place-items: center; padding: 24px; }
+    .app { width: 100%; max-width: 520px; background: white; padding: 28px; border-radius: 16px; box-shadow: 0 12px 35px #00000012; }
+    h1 { margin: 0 0 8px; } .subtitle { color: #6b7280; margin: 0 0 22px; }
+    form { display: flex; gap: 8px; } input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; }
+    button { border: 0; border-radius: 8px; padding: 11px 14px; cursor: pointer; font-size: 14px; }
+    .add { background: #2563eb; color: white; font-weight: bold; } .add:hover { background: #1d4ed8; }
+    .filters { display: flex; gap: 8px; margin: 18px 0; } .filter { background: #f3f4f6; color: #374151; } .filter.active { background: #dbeafe; color: #1d4ed8; }
+    ul { list-style: none; padding: 0; margin: 0; } li { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+    li span { flex: 1; overflow-wrap: anywhere; } li.done span { color: #9ca3af; text-decoration: line-through; }
+    .delete { background: #fee2e2; color: #b91c1c; } .empty { text-align: center; color: #9ca3af; padding: 24px 0; }
+    .footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: #6b7280; font-size: 13px; margin-top: 18px; }
+    .clear { background: transparent; color: #6b7280; padding: 6px; } .clear:hover { color: #b91c1c; }
+    @media (max-width: 420px) { .app { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Mi lista de tareas</h1>
+    <p class="subtitle">Organiza tus pendientes, paso a paso.</p>
+    <form id="task-form">
+      <input id="task-input" type="text" placeholder="¿Qué necesitas hacer?" maxlength="120" autocomplete="off" required>
+      <button class="add" type="submit">Agregar</button>
+    </form>
+    <div class="filters" aria-label="Filtros">
+      <button class="filter active" data-filter="all">Todas</button>
+      <button class="filter" data-filter="pending">Pendientes</button>
+      <button class="filter" data-filter="done">Completadas</button>
+    </div>
+    <ul id="task-list"></ul>
+    <div class="footer">
+      <span id="task-count">0 tareas pendientes</span>
+      <button class="clear" id="clear-done">Eliminar completadas</button>
+    </div>
+  </main>
+  <script>
+    const form = document.getElementById('task-form');
+    const input = document.getElementById('task-input');
+    const list = document.getElementById('task-list');
+    const count = document.getElementById('task-count');
+    const filters = document.querySelectorAll('.filter');
+    let tasks = JSON.parse(localStorage.getItem('todo-tasks') || '[]');
+    let currentFilter = 'all';
+
+    function save() { localStorage.setItem('todo-tasks', JSON.stringify(tasks)); }
+    function render() {
+      list.innerHTML = '';
+      const visible = tasks.filter(task => currentFilter === 'all' || (currentFilter === 'pending' && !task.done) || (currentFilter === 'done' && task.done));
+      if (!visible.length) {
+        const empty = document.createElement('li'); empty.className = 'empty';
+        empty.textContent = tasks.length ? 'No hay tareas en este filtro.' : '¡No tienes tareas! Agrega una arriba.';
+        list.appendChild(empty);
+      }
+      visible.forEach(task => {
+        const item = document.createElement('li'); item.className = task.done ? 'done' : '';
+        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = task.done; checkbox.setAttribute('aria-label', 'Marcar tarea');
+        checkbox.addEventListener('change', () => { task.done = checkbox.checked; save(); render(); });
+        const text = document.createElement('span'); text.textContent = task.text;
+        const remove = document.createElement('button'); remove.className = 'delete'; remove.textContent = 'Eliminar'; remove.setAttribute('aria-label', 'Eliminar ' + task.text);
+        remove.addEventListener('click', () => { tasks = tasks.filter(t => t.id !== task.id); save(); render(); });
+        item.append(checkbox, text, remove); list.appendChild(item);
+      });
+      const pending = tasks.filter(t => !t.done).length;
+      count.textContent = pending + (pending === 1 ? ' tarea pendiente' : ' tareas pendientes');
+    }
+    form.addEventListener('submit', event => {
+      event.preventDefault(); const text = input.value.trim(); if (!text) return;
+      tasks.push({ id: Date.now(), text, done: false }); input.value = ''; save(); render(); input.focus();
+    });
+    filters.forEach(button => button.addEventListener('click', () => {
+      currentFilter = button.dataset.filter;
+      filters.forEach(b => b.classList.toggle('active', b === button)); render();
+    }));
+    document.getElementById('clear-done').addEventListener('click', () => {
+      tasks = tasks.filter(task => !task.done); save(); render();
+    });
+    render();
+  </script>
+</body>
+</html>
